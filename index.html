@@ -4,27 +4,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Mily Flappy Fix</title>
+    <title>Flappy Mily Fix 2</title>
     <style>
-        body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #70c5ce; font-family: Arial; overflow: hidden; }
-        #game-container { position: relative; width: 320px; height: 480px; background-color: #70c5ce; overflow: hidden; border: 3px solid #000; touch-action: none; }
-        #bird { position: absolute; width: 34px; height: 24px; background-color: #ffcc00; border-radius: 12px; left: 50px; top: 200px; z-index: 10; border: 2px solid #000; }
-        .pipe { position: absolute; width: 50px; background-color: #4CAF50; border: 2px solid #2E7D32; right: -60px; z-index: 5; }
-        #score { position: absolute; top: 10px; left: 10px; font-size: 24px; font-weight: bold; color: white; z-index: 20; text-shadow: 2px 2px #000; }
-        #game-over { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; color: white; }
-        #restart-btn { padding: 15px 30px; background: #2ecc71; color: white; border: none; border-radius: 10px; font-size: 20px; cursor: pointer; margin-top: 20px; box-shadow: 0 4px #27ae60; }
-        #restart-btn:active { box-shadow: none; transform: translateY(4px); }
+        body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #222; overflow: hidden; font-family: sans-serif; }
+        #game-container { position: relative; width: 320px; height: 480px; background: #70c5ce; overflow: hidden; border: 4px solid #000; }
+        #bird { position: absolute; width: 30px; height: 30px; background: #f1c40f; left: 50px; top: 200px; border-radius: 5px; border: 2px solid #000; z-index: 10; }
+        .pipe { position: absolute; width: 50px; background: #2ecc71; border: 2px solid #000; z-index: 5; }
+        #score { position: absolute; top: 10px; width: 100%; text-align: center; font-size: 30px; color: white; font-weight: bold; z-index: 20; text-shadow: 2px 2px #000; }
+        /* ÖLÜM EKRANI VE BUTON */
+        #game-over { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        h1 { color: white; margin-bottom: 10px; }
+        #restart-btn { 
+            padding: 20px 40px; 
+            font-size: 22px; 
+            font-weight: bold; 
+            background: #e67e22; 
+            color: white; 
+            border: 4px solid #fff; 
+            border-radius: 10px; 
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
     </style>
 </head>
 <body>
 
-<div id="game-container" id="tap-area">
+<div id="game-container">
     <div id="score">0</div>
     <div id="bird"></div>
     <div id="game-over">
-        <h1>BİTTİ!</h1>
-        <p id="final-txt">Skor: 0</p>
-        <button id="restart-btn">TEKRAR DENE</button>
+        <h1>ÖLDÜN!</h1>
+        <button id="restart-btn" onclick="resetGame(event)">TEKRAR OYNA</button>
     </div>
 </div>
 
@@ -35,35 +45,35 @@
     const screenOver = document.getElementById('game-over');
     const btn = document.getElementById('restart-btn');
 
-    let bY = 200, bV = 0, gravity = 0.2, jump = -4.5;
+    let bY = 200, bV = 0, gravity = 0.25, jump = -5;
     let score = 0, active = true, pipes = [], frame = 0;
 
-    function reset() {
-        bY = 200; bV = 0; score = 0; pipes.forEach(p => p.el.remove());
-        pipes = []; active = true; frame = 0;
+    // OYUNU SIFIRLAMA FONKSİYONU
+    function resetGame(e) {
+        if(e) e.stopPropagation(); // Zıplamayı tetiklemesini engelle
+        bY = 200; bV = 0; score = 0;
+        pipes.forEach(p => { p.top.remove(); p.bot.remove(); });
+        pipes = [];
+        frame = 0;
+        active = true;
         scoreDisp.textContent = '0';
         screenOver.style.display = 'none';
         loop();
     }
 
     function spawnPipe() {
-        const gap = 140; // Boru arası boşluk (Genişletildi)
-        const minH = 50;
-        const topH = Math.random() * (container.clientHeight - gap - 100) + minH;
+        const gap = 150; // Boru aralığı daha da genişletildi (Kolay mod)
+        const topH = Math.random() * 200 + 50;
         
-        const topEl = document.createElement('div');
-        topEl.className = 'pipe';
-        topEl.style.height = topH + 'px';
-        topEl.style.top = '0';
-        container.appendChild(topEl);
+        const t = document.createElement('div'); t.className = 'pipe';
+        t.style.height = topH + 'px'; t.style.top = '0'; t.style.left = '320px';
+        container.appendChild(t);
 
-        const botEl = document.createElement('div');
-        botEl.className = 'pipe';
-        botEl.style.height = (container.clientHeight - topH - gap) + 'px';
-        botEl.style.bottom = '0';
-        container.appendChild(botEl);
+        const b = document.createElement('div'); b.className = 'pipe';
+        b.style.height = (480 - topH - gap) + 'px'; b.style.bottom = '0'; b.style.left = '320px';
+        container.appendChild(b);
 
-        pipes.push({ x: 320, top: topEl, bot: botEl, upperLimit: topH, lowerLimit: topH + gap, passed: false });
+        pipes.push({ x: 320, top: t, bot: b, tH: topH, bH: topH + gap, passed: false });
     }
 
     function loop() {
@@ -72,12 +82,50 @@
         bV += gravity;
         bY += bV;
         bird.style.top = bY + 'px';
-        bird.style.transform = `rotate(${Math.min(bV * 4, 90)}deg)`;
 
-        if (frame % 100 === 0) spawnPipe(); // Boru gelme sıklığı azaltıldı
+        if (frame % 90 === 0) spawnPipe();
 
         for (let i = pipes.length - 1; i >= 0; i--) {
             let p = pipes[i];
-            p.x -= 2.5;
+            p.x -= 2;
+            p.top.style.left = p.x + 'px';
+            p.bot.style.left = p.x + 'px';
+
+            // Çarpışma Kutusu (Kuş 30x30)
+            if (50 + 25 > p.x && 50 < p.x + 50) {
+                if (bY < p.tH || bY + 25 > p.bH) active = false;
+            }
+
+            if (!p.passed && p.x < 50) {
+                score++; scoreDisp.textContent = score; p.passed = true;
+            }
+            if (p.x < -60) { p.top.remove(); p.bot.remove(); pipes.splice(i, 1); }
+        }
+
+        if (bY > 450 || bY < 0) active = false;
+
+        if (active) {
+            requestAnimationFrame(loop);
+        } else {
+            screenOver.style.display = 'flex';
+        }
+    }
+
+    // ZIPLAMA KOMUTLARI
+    window.addEventListener('touchstart', (e) => {
+        if (e.target.id === 'restart-btn') return; // Butona basınca zıplama
+        if (active) bV = jump;
+        e.preventDefault();
+    }, {passive: false});
+
+    window.addEventListener('mousedown', (e) => {
+        if (e.target.id === 'restart-btn') return;
+        if (active) bV = jump;
+    });
+
+    loop();
+</script>
+</body>
+</html>
 
         
