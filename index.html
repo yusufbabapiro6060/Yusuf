@@ -1,94 +1,117 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Çakma Flappy Pro</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerçek Flappy</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <style>
-        body { margin: 0; overflow: hidden; background: #70c5ce; font-family: Arial; }
-        canvas { display: block; margin: 20px auto; background: #fff; border: 3px solid #000; }
+        body { margin: 0; text-align: center; background: #70c5ce; font-family: 'Arial', sans-serif; overflow: hidden; }
+        canvas { background: #fff; border: 4px solid #333; margin-top: 20px; touch-action: none; }
     </style>
 </head>
 <body>
-    <canvas id="game" width="320" height="480"></canvas>
+    <canvas id="gameCanvas" width="320" height="480"></canvas>
     <script>
-        const canvas = document.getElementById("game");
+        const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        let birdY = 200, birdV = 0, score = 0, gameActive = true;
+        // Oyun Değişkenleri
+        let birdY = 200;
+        let birdV = 0;
+        let gravity = 0.25;
+        let jump = -4.5;
+        let score = 0;
+        let gameActive = true;
         let pipes = [];
         let frame = 0;
 
-        // Ekrana her dokunduğunda zıpla veya oyunu başlat
-        window.onclick = function() {
+        // Ekrana dokunma/tıklama
+        function handleAction() {
             if (!gameActive) {
-                // Öldüysen oyunu sıfırla
-                birdY = 200; birdV = 0; score = 0; pipes = []; gameActive = true;
+                resetGame();
             } else {
-                birdV = -5;
+                birdV = jump;
             }
-        };
+        }
+        window.addEventListener("mousedown", handleAction);
+        window.addEventListener("touchstart", handleAction);
+
+        function resetGame() {
+            birdY = 200; birdV = 0; score = 0; pipes = []; gameActive = true; frame = 0;
+        }
 
         function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
             if (gameActive) {
-                birdV += 0.25; birdY += birdV; // Yerçekimi
+                // Yerçekimi ve Hareket
+                birdV += gravity;
+                birdY += birdV;
                 frame++;
 
-                // Boru Oluşturma (Her 100 karede bir)
-                if (frame % 100 == 0) {
-                    let gap = 120;
-                    let pipeTopHeight = Math.random() * (canvas.height - gap - 100) + 50;
-                    pipes.push({ x: canvas.width, top: pipeTopHeight, bottom: pipeTopHeight + gap });
+                // Boru Ekleme (Her 90 karede bir)
+                if (frame % 90 === 0) {
+                    let gap = 130; // Boru aralığı
+                    let minHeight = 50;
+                    let maxHeight = canvas.height - gap - minHeight;
+                    let topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+                    pipes.push({ x: canvas.width, top: topHeight, bottom: topHeight + gap });
                 }
 
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                // Kuşu Çiz (Turuncu Kare)
-                ctx.fillStyle = "orange";
-                ctx.fillRect(50, birdY, 30, 30);
-
-                // Boruları Çiz ve Hareket Ettir
-                ctx.fillStyle = "green";
+                // Boruları Çiz ve Kontrol Et
+                ctx.fillStyle = "#2ecc71"; // Yeşil borular
                 for (let i = pipes.length - 1; i >= 0; i--) {
-                    pipes[i].x -= 2;
-                    // Üst Boru
-                    ctx.fillRect(pipes[i].x, 0, 50, pipes[i].top);
-                    // Alt Boru
-                    ctx.fillRect(pipes[i].x, pipes[i].bottom, 50, canvas.height);
+                    pipes[i].x -= 2.5; // Boru hızı
 
-                    // Çarpışma Kontrolü (Ölme)
-                    if (50 + 30 > pipes[i].x && 50 < pipes[i].x + 50) {
-                        if (birdY < pipes[i].top || birdY + 30 > pipes[i].bottom) {
+                    // Üst Boru çizimi
+                    ctx.fillRect(pipes[i].x, 0, 50, pipes[i].top);
+                    ctx.strokeStyle = "#000"; ctx.strokeRect(pipes[i].x, 0, 50, pipes[i].top);
+                    
+                    // Alt Boru çizimi
+                    ctx.fillRect(pipes[i].x, pipes[i].bottom, 50, canvas.height);
+                    ctx.strokeRect(pipes[i].x, pipes[i].bottom, 50, canvas.height);
+
+                    // --- ÖLME KONTROLÜ (ÇARPIŞMA) ---
+                    if (50 + 25 > pipes[i].x && 50 < pipes[i].x + 50) { // Yatayda hizalıysa
+                        if (birdY < pipes[i].top || birdY + 25 > pipes[i].bottom) { // Dikeyde çarpıyorsa
                             gameActive = false;
                         }
                     }
 
-                    // Puan Kazanma
+                    // Puan Alma
                     if (pipes[i].x === 50) score++;
-                    // Ekrandan çıkan boruyu sil
-                    if (pipes[i].x < -50) pipes.splice(i, 1);
+                    // Boru ekrandan çıktıysa sil
+                    if (pipes[i].x < -60) pipes.splice(i, 1);
                 }
 
-                // Yere düşme kontrolü
+                // Kuşu Çiz (Sarı Kare)
+                ctx.fillStyle = "yellow";
+                ctx.fillRect(50, birdY, 25, 25);
+                ctx.strokeRect(50, birdY, 25, 25);
+
+                // Yere veya tavana çarpma
                 if (birdY > canvas.height || birdY < 0) gameActive = false;
 
                 // Skor Yazısı
-                ctx.fillStyle = "black";
-                ctx.font = "20px Arial";
-                ctx.fillText("Skor: " + score, 10, 30);
+                ctx.fillStyle = "#000";
+                ctx.font = "bold 20px Arial";
+                ctx.fillText("SKOR: " + score, 20, 40);
+
             } else {
-                // Game Over Ekranı
-                ctx.fillStyle = "rgba(0,0,0,0.5)";
-                ctx.fillRect(0,0,320,480);
+                // GAME OVER EKRANI
+                ctx.fillStyle = "rgba(0,0,0,0.6)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = "white";
                 ctx.font = "30px Arial";
-                ctx.fillText("ÖLDÜN!", 110, 220);
+                ctx.fillText("ÖLDÜN!", 100, 220);
                 ctx.font = "20px Arial";
-                ctx.fillText("Tekrar için tıkla", 90, 260);
+                ctx.fillText("Skorun: " + score, 115, 260);
+                ctx.fillText("Tekrar Tıkla", 105, 300);
             }
+
             requestAnimationFrame(loop);
         }
+
         loop();
     </script>
 </body>
 </html>
-
