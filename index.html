@@ -1,32 +1,94 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Çakma Flappy</title>
+    <title>Çakma Flappy Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { margin: 0; overflow: hidden; background: skyblue; text-align: center; }
-        canvas { background: white; border: 2px solid #000; margin-top: 20px; }
+        body { margin: 0; overflow: hidden; background: #70c5ce; font-family: Arial; }
+        canvas { display: block; margin: 20px auto; background: #fff; border: 3px solid #000; }
     </style>
 </head>
 <body>
     <canvas id="game" width="320" height="480"></canvas>
     <script>
-        var canvas = document.getElementById("game");
-        var ctx = canvas.getContext("2d");
-        var birdY = 200, birdV = 0;
-        
-        // Ekrana dokununca zıpla
-        window.onclick = function() { birdV = -5; };
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+
+        let birdY = 200, birdV = 0, score = 0, gameActive = true;
+        let pipes = [];
+        let frame = 0;
+
+        // Ekrana her dokunduğunda zıpla veya oyunu başlat
+        window.onclick = function() {
+            if (!gameActive) {
+                // Öldüysen oyunu sıfırla
+                birdY = 200; birdV = 0; score = 0; pipes = []; gameActive = true;
+            } else {
+                birdV = -5;
+            }
+        };
 
         function loop() {
-            birdV += 0.25; birdY += birdV; // Yerçekimi
-            ctx.clearRect(0,0,320,480);
-            ctx.fillStyle = "orange";
-            ctx.fillRect(50, birdY, 30, 30); // Kuş
-            
-            if(birdY > 450) birdY = 200; // Düşerse başa sar
+            if (gameActive) {
+                birdV += 0.25; birdY += birdV; // Yerçekimi
+                frame++;
+
+                // Boru Oluşturma (Her 100 karede bir)
+                if (frame % 100 == 0) {
+                    let gap = 120;
+                    let pipeTopHeight = Math.random() * (canvas.height - gap - 100) + 50;
+                    pipes.push({ x: canvas.width, top: pipeTopHeight, bottom: pipeTopHeight + gap });
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Kuşu Çiz (Turuncu Kare)
+                ctx.fillStyle = "orange";
+                ctx.fillRect(50, birdY, 30, 30);
+
+                // Boruları Çiz ve Hareket Ettir
+                ctx.fillStyle = "green";
+                for (let i = pipes.length - 1; i >= 0; i--) {
+                    pipes[i].x -= 2;
+                    // Üst Boru
+                    ctx.fillRect(pipes[i].x, 0, 50, pipes[i].top);
+                    // Alt Boru
+                    ctx.fillRect(pipes[i].x, pipes[i].bottom, 50, canvas.height);
+
+                    // Çarpışma Kontrolü (Ölme)
+                    if (50 + 30 > pipes[i].x && 50 < pipes[i].x + 50) {
+                        if (birdY < pipes[i].top || birdY + 30 > pipes[i].bottom) {
+                            gameActive = false;
+                        }
+                    }
+
+                    // Puan Kazanma
+                    if (pipes[i].x === 50) score++;
+                    // Ekrandan çıkan boruyu sil
+                    if (pipes[i].x < -50) pipes.splice(i, 1);
+                }
+
+                // Yere düşme kontrolü
+                if (birdY > canvas.height || birdY < 0) gameActive = false;
+
+                // Skor Yazısı
+                ctx.fillStyle = "black";
+                ctx.font = "20px Arial";
+                ctx.fillText("Skor: " + score, 10, 30);
+            } else {
+                // Game Over Ekranı
+                ctx.fillStyle = "rgba(0,0,0,0.5)";
+                ctx.fillRect(0,0,320,480);
+                ctx.fillStyle = "white";
+                ctx.font = "30px Arial";
+                ctx.fillText("ÖLDÜN!", 110, 220);
+                ctx.font = "20px Arial";
+                ctx.fillText("Tekrar için tıkla", 90, 260);
+            }
             requestAnimationFrame(loop);
         }
         loop();
     </script>
 </body>
 </html>
+
