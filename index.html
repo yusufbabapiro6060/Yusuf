@@ -1,45 +1,21 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Çakma Flappy - Mily Pro</title>
-    <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: #4ec0ca; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; }
-        canvas { background: #fff; border: 5px solid #222; box-shadow: 0 0 20px rgba(0,0,0,0.5); touch-action: none; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Project 001</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <canvas id="c" width="320" height="480"></canvas>
-    <script>
-        const canvas = document.getElementById("c");
-        const ctx = canvas.getContext("2d");
-
-        let bY = 200, bV = 0, score = 0, active = true, pipes = [], frame = 0;
-
-        function start() {
-            bY = 200; bV = 0; score = 0; pipes = []; active = true; frame = 0;
-        }
-
-        window.onmousedown = window.ontouchstart = (e) => {
-            if (!active) { start(); } else { bV = -5; }
-            if(e.cancelable) e.preventDefault();
-        };
-
-        function draw() {
-            ctx.fillStyle = "#70c5ce"; // Gökyüzü rengi
-            ctx.fillRect(0, 0, 320, 480);
-
-            if (active) {
-                bV += 0.25; bY += bV; // Yerçekimi
-                frame++;
-
-                if (frame % 80 === 0) { // Boru sıklığı
-                    let gap = 120;
-                    let topH = Math.random() * (250 - 50) + 50;
-                    pipes.push({ x: 320, top: topH, bot: topH + gap });
-                }
-
-                ctx.fillStyle = "#2ecc71"; // Boru rengi (Yeşil)
-                for
-                    
+    <div class="container">
+        <div class="game-title">
+            <h1>FLAPPY BIRD</h1>
+        </div>
+        <div class="game-screen">
+            <canvas id="game" width="300" height="500"></canvas>
+            <p id="description" class="game-description">Press 'spacebar' or 'click' to begin</p>
+        </div>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
