@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Flappy To Geometry Dash</title>
+    <title>Flappy To Geometry Dash - Demon Edition</title>
     <style>
         body { margin: 0; padding: 0; overflow: hidden; background: #2c3e50; touch-action: none; font-family: 'Arial Black', sans-serif; }
         canvas { display: block; width: 100vw; height: 100vh; }
@@ -46,25 +46,29 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // OYUN MODU: "FLAPPY" veya "DASH"
         let gameMode = "FLAPPY"; 
-
         let score = 0, gameOver = false, gameStarted = false, frameCount = 0;
         let flashEffect = 0;
+        let bgPulseColor = "#181a26"; // Dash modu dinamik arka planı
 
-        // Karakter (Hem kuş hem küp olacak)
-        let bird = { x: canvas.width * 0.35, y: canvas.height / 2, w: 34, h: 24, gravity: 0.4, velocity: 0, jump: -7.5, wingFrame: 0, rotation: 0, dashSize: 35 };
+        // Karakter Ayarları (Dash modu yerçekimi ve zıplaması sertleştirildi)
+        let bird = { 
+            x: canvas.width * 0.35, y: canvas.height / 2, w: 34, h: 24, 
+            gravity: 0.4, velocity: 0, jump: -7.5, wingFrame: 0, rotation: 0, 
+            dashSize: 34, dashGravity: 0.8, dashJump: -13.5 
+        };
 
-        // Canavar (Rekor 3 HP yapıldı!)
+        // Canavar (3 Vuruşta ölüyor)
         let monster = { x: -10, y: canvas.height / 2 - 50, w: 70, h: 90, maxHp: 3, hp: 3, shake: 0 };
 
-        // Engeller (Flappy Boruları & Geometry Çivileri)
+        // Engeller
         let pipes = [];
         let spikes = [];
         let pipeWidth = 60, pipeGap = 150, pipeSpeed = 2.5, groundHeight = 120;
-        let spikeSpeed = 5;
+        
+        // ZORLAŞTIRILMIŞ HIZ
+        let spikeSpeed = 8.5; 
 
-        // Dokunma / Zıplama Tetikleyicisi
         const doJump = () => {
             if (!gameStarted) { 
                 gameStarted = true; 
@@ -75,9 +79,9 @@
             if (gameMode === "FLAPPY") {
                 bird.velocity = bird.jump;
             } else if (gameMode === "DASH") {
-                // Geometry Dash mekaniği: Sadece yerdeyken zıplayabilir
+                // Sadece yerdeyken zıplama
                 if (bird.y >= canvas.height - groundHeight - bird.dashSize) {
-                    bird.velocity = -11; 
+                    bird.velocity = bird.dashJump; 
                 }
             }
         };
@@ -91,12 +95,19 @@
             pipes.push({ x: canvas.width, topHeight: topH, bottomY: topH + pipeGap, passed: false });
         }
 
+        // ZORLAŞTIRILMIŞ ÇİVİ ÜRETİCİSİ (Tekli, İkili veya Üçlü çiviler)
         function createSpike() {
-            spikes.push({ x: canvas.width, w: 30, h: 35, passed: false });
+            let type = Math.random();
+            let count = 1; // Tekli çivi %40 ihtimal
+            if (type > 0.4 && type <= 0.75) count = 2; // İkili çivi %35 ihtimal
+            if (type > 0.75) count = 3; // Üçlü ölümcül çivi %25 ihtimal
+
+            spikes.push({ x: canvas.width, w: 26, h: 32, count: count, passed: false });
         }
 
         function resetGame() {
             gameMode = "FLAPPY";
+            bgPulseColor = "#181a26";
             modeText.textContent = "FLAPPY MODU";
             modeText.style.color = "#f1c40f";
             bird.y = canvas.height / 2; bird.velocity = 0; bird.rotation = 0;
@@ -110,12 +121,11 @@
             frameCount++;
 
             if (gameStarted && !gameOver) {
-                // Yerçekimi Uygula
-                bird.velocity += (gameMode === "DASH" ? 0.6 : bird.gravity); // Dash modunda yerçekimi daha serttir
+                // Modlara özel yerçekimi
+                bird.velocity += (gameMode === "DASH" ? bird.dashGravity : bird.gravity); 
                 bird.y += bird.velocity;
 
                 if (gameMode === "FLAPPY") {
-                    // FLAPPY GÜNCELLEMELERİ
                     if (bird.velocity < 0) bird.rotation = -0.3;
                     else if (bird.velocity > 3) { bird.rotation += 0.05; if (bird.rotation > 1.2) bird.rotation = 1.2; }
 
@@ -136,21 +146,19 @@
                             score++;
                             scoreText.textContent = score;
                             
-                            // HER 3 PUANDA BOSS HASAR ALIR
                             if (score % 3 === 0 && monster.hp > 0) {
                                 monster.hp--;
                                 monster.shake = 20;
                                 flashEffect = 12;
                                 bossHpBar.style.width = (monster.hp / monster.maxHp) * 100 + "%";
 
-                                // BOSS ÖLDÜYSE GEOMETRY DASH MODUNA GEÇ!
                                 if (monster.hp <= 0) {
                                     setTimeout(() => {
                                         gameMode = "DASH";
-                                        modeText.textContent = "GEOMETRY DASH MODU";
-                                        modeText.style.color = "#00ffcc";
+                                        modeText.textContent = "GEOMETRY DASH (DEMON)";
+                                        modeText.style.color = "#ff3333";
                                         bossUi.style.display = "none";
-                                        pipes = []; // Boruları temizle
+                                        pipes = []; 
                                         bird.y = canvas.height - groundHeight - bird.dashSize;
                                         bird.velocity = 0;
                                     }, 200);
@@ -163,36 +171,38 @@
                     if (bird.y + bird.h >= canvas.height - groundHeight || bird.y < 0) gameOver = true;
 
                 } else if (gameMode === "DASH") {
-                    // GEOMETRY DASH GÜNCELLEMELERİ
-                    // Küp yere basıyor mu kontrolü
+                    // GEOMETRY DASH MODU (ZOR)
                     if (bird.y >= canvas.height - groundHeight - bird.dashSize) {
                         bird.y = canvas.height - groundHeight - bird.dashSize;
                         bird.velocity = 0;
-                        // Yerde giderken küpün dönme açısını sıfırla/düzelt
                         bird.rotation = 0;
                     } else {
-                        // Havada dönme efekti
-                        bird.rotation += 0.08;
+                        bird.rotation += 0.12; // Havada daha hızlı döner
                     }
 
-                    // Çivi Engeli Üretimi
-                    if (frameCount % 80 === 0) createSpike();
+                    // Çivi gelme sıklığı hıza göre ayarlandı
+                    if (frameCount % 65 === 0) createSpike();
 
                     spikes.forEach((spike, idx) => {
                         spike.x -= spikeSpeed;
 
-                        // Çivi Çarpışma Testi (Küp Hitbox)
-                        if (bird.x + bird.dashSize > spike.x + 4 && bird.x < spike.x + spike.w - 4 &&
+                        // Genişletilmiş Çarpışma Alanı (Küpün çivinin toplam genişliğine çarpma hesabı)
+                        let totalSpikeWidth = spike.w * spike.count;
+                        if (bird.x + bird.dashSize > spike.x + 4 && bird.x < spike.x + totalSpikeWidth - 4 &&
                             bird.y + bird.dashSize > canvas.height - groundHeight - spike.h) {
                             gameOver = true;
                         }
 
-                        if (!spike.passed && spike.x + spike.w < bird.x) {
+                        if (!spike.passed && spike.x + totalSpikeWidth < bird.x) {
                             spike.passed = true;
                             score++;
                             scoreText.textContent = score;
+                            
+                            // Başarılı atlamalarda arka plan rengi parlasın (Ritim efekti)
+                            let colors = ["#2c1a3a", "#1a3a3a", "#3a1a1a", "#181a26"];
+                            bgPulseColor = colors[Math.floor(Math.random() * colors.length)];
                         }
-                        if (spike.x + spike.w < 0) spikes.splice(idx, 1);
+                        if (spike.x + totalSpikeWidth < 0) spikes.splice(idx, 1);
                     });
                 }
             }
@@ -202,90 +212,89 @@
         }
 
         function draw() {
-            // Arka Plan Rengi Modlara Göre Değişir
-            ctx.fillStyle = (gameMode === "DASH") ? "#181a26" : "#2c3e50";
+            ctx.fillStyle = (gameMode === "DASH") ? bgPulseColor : "#2c3e50";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (gameMode === "FLAPPY") {
-                // FLAPPY BORULARINI ÇİZ
                 pipes.forEach(pipe => {
                     ctx.fillStyle = "#27ae60"; ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
                     ctx.fillRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
                 });
 
-                // Canavarı Çiz
                 if (monster.hp > 0) {
                     ctx.save();
                     if (monster.shake > 0) ctx.translate((Math.random() - 0.5) * 10, 0);
                     ctx.fillStyle = monster.shake > 0 ? "#ff4757" : "#1e1e24";
                     ctx.fillRect(monster.x, monster.y, monster.w, monster.h);
-                    ctx.fillStyle = "#ff0000"; ctx.fillRect(monster.x + monster.w - 20, monster.y + 20, 8, 8); // Göz
+                    ctx.fillStyle = "#ff0000"; ctx.fillRect(monster.x + monster.w - 20, monster.y + 20, 8, 8);
                     ctx.restore();
                 }
 
-                // Kuşu Çiz
                 ctx.save();
                 ctx.translate(bird.x + bird.w/2, bird.y + bird.h/2);
                 ctx.rotate(bird.rotation);
                 ctx.fillStyle = "#F7D51D"; ctx.fillRect(-bird.w/2, -bird.h/2, bird.w, bird.h);
-                ctx.fillStyle = "#FFF"; ctx.fillRect(4, -8, 8, 8); // Göz
-                ctx.fillStyle = "#F75300"; ctx.fillRect(6, 2, 8, 6); // Gaga
+                ctx.fillStyle = "#FFF"; ctx.fillRect(4, -8, 8, 8);
+                ctx.fillStyle = "#F75300"; ctx.fillRect(6, 2, 8, 6);
                 ctx.restore();
 
             } else if (gameMode === "DASH") {
-                // GEOMETRY DASH ENGELİ (ÜÇGEN ÇİVİLER) ÇİZİMİ
+                // GEOMETRY DASH ÇİVİLERİ (Çoklu Çizim Sistemi)
                 spikes.forEach(spike => {
                     ctx.fillStyle = "#ff4757";
-                    ctx.beginPath();
-                    ctx.moveTo(spike.x, canvas.height - groundHeight);
-                    ctx.lineTo(spike.x + spike.w / 2, canvas.height - groundHeight - spike.h);
-                    ctx.lineTo(spike.x + spike.w, canvas.height - groundHeight);
-                    ctx.closePath();
-                    ctx.fill();
-                    // Çivi Konturu
-                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+
+                    for (let s = 0; s < spike.count; s++) {
+                        let currentSpikeX = spike.x + (s * spike.w);
+                        ctx.beginPath();
+                        ctx.moveTo(currentSpikeX, canvas.height - groundHeight);
+                        ctx.lineTo(currentSpikeX + spike.w / 2, canvas.height - groundHeight - spike.h);
+                        ctx.lineTo(currentSpikeX + spike.w, canvas.height - groundHeight);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                    }
                 });
 
-                // GEOMETRY DASH KÜPÜ ÇİZİMİ (Yeşil Parlayan Kare)
+                // LAVA DETAYLI KÜP
                 ctx.save();
                 ctx.translate(bird.x + bird.dashSize/2, bird.y + bird.dashSize/2);
                 ctx.rotate(bird.rotation);
-                ctx.fillStyle = "#00ffcc"; // Parlak Cyan Küp
+                ctx.fillStyle = "#ff3333"; 
                 ctx.fillRect(-bird.dashSize/2, -bird.dashSize/2, bird.dashSize, bird.dashSize);
                 ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
                 ctx.strokeRect(-bird.dashSize/2, -bird.dashSize/2, bird.dashSize, bird.dashSize);
-                // İç yüz ifadesi (Geometry Dash ikonu detayı)
-                ctx.fillStyle = "#181a26";
-                ctx.fillRect(-10, -10, 6, 8); ctx.fillRect(4, -10, 6, 8); // Gözler
-                ctx.fillRect(-10, 4, 20, 4); // Ağız
+                
+                // Agresif İkon Yüzü
+                ctx.fillStyle = "#000";
+                ctx.fillRect(-8, -9, 5, 8); ctx.fillRect(3, -9, 5, 8);
+                ctx.beginPath(); ctx.moveTo(-8, 5); ctx.lineTo(8, 5); ctx.lineTo(0, 1); ctx.closePath(); ctx.fill();
                 ctx.restore();
             }
 
-            // Ortak Zemin Çizimi
-            ctx.fillStyle = (gameMode === "DASH") ? "#0f1018" : "#7f8c8d";
+            // Zemin Tasarımı
+            ctx.fillStyle = (gameMode === "DASH") ? "#0d0e15" : "#7f8c8d";
             ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
-            ctx.fillStyle = (gameMode === "DASH") ? "#00ffcc" : "#95a5a6"; 
-            ctx.fillRect(0, canvas.height - groundHeight, canvas.width, 8); // Üst şerit çizgisi
+            ctx.fillStyle = (gameMode === "DASH") ? "#ff3333" : "#95a5a6"; 
+            ctx.fillRect(0, canvas.height - groundHeight, canvas.width, 8); 
 
-            // Şimşek Hasar Efekti
             if (flashEffect > 0) {
                 ctx.fillStyle = `rgba(255, 255, 255, ${flashEffect / 12})`;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 flashEffect--;
             }
 
-            // Durum Ekranları
             if (!gameStarted) {
                 ctx.fillStyle = "white"; ctx.font = "20px Arial"; ctx.textAlign = "center";
-                ctx.fillText("BAŞLAMAK İÇİN DOKUN", canvas.width / 2, canvas.height / 2 + 100);
+                ctx.fillText("MİLY DEMON LEVEL'A BAŞLA", canvas.width / 2, canvas.height / 2 + 100);
             }
 
             if (gameOver) {
-                ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "#e74c3c"; ctx.font = "35px sans-serif"; ctx.textAlign = "center";
-                ctx.fillText("YENİLDİN!", canvas.width / 2, canvas.height / 2 - 20);
+                ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#ff3333"; ctx.font = "35px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText("ELENDİN! (DEMON)", canvas.width / 2, canvas.height / 2 - 20);
                 ctx.fillStyle = "white"; ctx.font = "18px sans-serif";
-                ctx.fillText("Yeniden Başlamak İçin Dokun", canvas.width / 2, canvas.height / 2 + 30);
+                ctx.fillText("Tekrar denemek için ekrana dokun", canvas.width / 2, canvas.height / 2 + 30);
             }
         }
 
