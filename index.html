@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Flappy Monster Attack</title>
+    <title>Flappy To Geometry Dash</title>
     <style>
         body { margin: 0; padding: 0; overflow: hidden; background: #2c3e50; touch-action: none; font-family: 'Arial Black', sans-serif; }
         canvas { display: block; width: 100vw; height: 100vh; }
         
-        /* ARAYÜZ ELEMANLARI */
         #ui { position: absolute; top: 15px; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 10; }
         #score-text { color: white; font-size: 35px; text-shadow: 3px 3px 0 #000; margin-bottom: 5px; }
+        #mode-text { color: #f1c40f; font-size: 18px; text-shadow: 2px 2px 0 #000; margin-bottom: 5px; font-weight: bold; }
         
-        /* CANAVAR CAN BARI */
         #boss-ui { width: 60%; max-width: 250px; background: #333; border: 3px solid #000; border-radius: 8px; overflow: hidden; display: none; }
         #boss-hp { width: 100%; height: 15px; background: #ff4757; transition: width 0.3s ease; }
         #boss-label { color: #ff4757; font-size: 12px; text-align: center; font-weight: bold; text-shadow: 1px 1px 0 #000; padding: 2px 0; }
@@ -21,6 +20,7 @@
 <body>
 
     <div id="ui">
+        <div id="mode-text">FLAPPY MODU</div>
         <div id="score-text">0</div>
         <div id="boss-ui">
             <div id="boss-label">CANAVAR HP</div>
@@ -34,6 +34,7 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         const scoreText = document.getElementById("score-text");
+        const modeText = document.getElementById("mode-text");
         const bossUi = document.getElementById("boss-ui");
         const bossHpBar = document.getElementById("boss-hp");
 
@@ -45,40 +46,44 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Oyun Durumları
+        // OYUN MODU: "FLAPPY" veya "DASH"
+        let gameMode = "FLAPPY"; 
+
         let score = 0, gameOver = false, gameStarted = false, frameCount = 0;
-        let flashEffect = 0; // Şimşek çakma efekti için
+        let flashEffect = 0;
 
-        // Kuş Fiziği ve Tasarımı
-        let bird = { x: canvas.width * 0.35, y: canvas.height / 2, w: 34, h: 24, gravity: 0.4, velocity: 0, jump: -7.5, wingFrame: 0, rotation: 0 };
+        // Karakter (Hem kuş hem küp olacak)
+        let bird = { x: canvas.width * 0.35, y: canvas.height / 2, w: 34, h: 24, gravity: 0.4, velocity: 0, jump: -7.5, wingFrame: 0, rotation: 0, dashSize: 35 };
 
-        // Arkadaki Canavar Nesnesi
-        let monster = {
-            x: -10, // Ekranın sol kenarında pusuda bekliyor
-            y: canvas.height / 2 - 50,
-            w: 70,
-            h: 90,
-            maxHp: 5,
-            hp: 5,
-            shake: 0
+        // Canavar (Rekor 3 HP yapıldı!)
+        let monster = { x: -10, y: canvas.height / 2 - 50, w: 70, h: 90, maxHp: 3, hp: 3, shake: 0 };
+
+        // Engeller (Flappy Boruları & Geometry Çivileri)
+        let pipes = [];
+        let spikes = [];
+        let pipeWidth = 60, pipeGap = 150, pipeSpeed = 2.5, groundHeight = 120;
+        let spikeSpeed = 5;
+
+        // Dokunma / Zıplama Tetikleyicisi
+        const doJump = () => {
+            if (!gameStarted) { 
+                gameStarted = true; 
+                if(gameMode === "FLAPPY") bossUi.style.display = "block"; 
+            }
+            if (gameOver) { resetGame(); return; }
+
+            if (gameMode === "FLAPPY") {
+                bird.velocity = bird.jump;
+            } else if (gameMode === "DASH") {
+                // Geometry Dash mekaniği: Sadece yerdeyken zıplayabilir
+                if (bird.y >= canvas.height - groundHeight - bird.dashSize) {
+                    bird.velocity = -11; 
+                }
+            }
         };
 
-        // Boru ve Çevre Ayarları
-        let pipes = [], pipeWidth = 60, pipeGap = 150, pipeSpeed = 2.5, groundHeight = 80;
-
-        // Dokunmatik Zıplama Kontrolü
-        window.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (!gameStarted) { gameStarted = true; bossUi.style.display = "block"; }
-            if (gameOver) { resetGame(); return; }
-            bird.velocity = bird.jump;
-        }, { passive: false });
-
-        window.addEventListener('mousedown', () => {
-            if (!gameStarted) { gameStarted = true; bossUi.style.display = "block"; }
-            if (gameOver) { resetGame(); return; }
-            bird.velocity = bird.jump;
-        });
+        window.addEventListener('touchstart', (e) => { e.preventDefault(); doJump(); }, { passive: false });
+        window.addEventListener('mousedown', doJump);
 
         function createPipe() {
             let minH = 60, maxH = canvas.height - groundHeight - pipeGap - 60;
@@ -86,10 +91,17 @@
             pipes.push({ x: canvas.width, topHeight: topH, bottomY: topH + pipeGap, passed: false });
         }
 
+        function createSpike() {
+            spikes.push({ x: canvas.width, w: 30, h: 35, passed: false });
+        }
+
         function resetGame() {
+            gameMode = "FLAPPY";
+            modeText.textContent = "FLAPPY MODU";
+            modeText.style.color = "#f1c40f";
             bird.y = canvas.height / 2; bird.velocity = 0; bird.rotation = 0;
             monster.hp = monster.maxHp; bossHpBar.style.width = "100%";
-            pipes = []; score = 0; scoreText.textContent = score;
+            pipes = []; spikes = []; score = 0; scoreText.textContent = score;
             gameOver = false; gameStarted = false; frameCount = 0; flashEffect = 0;
             bossUi.style.display = "none";
         }
@@ -98,52 +110,90 @@
             frameCount++;
 
             if (gameStarted && !gameOver) {
-                bird.velocity += bird.gravity;
+                // Yerçekimi Uygula
+                bird.velocity += (gameMode === "DASH" ? 0.6 : bird.gravity); // Dash modunda yerçekimi daha serttir
                 bird.y += bird.velocity;
 
-                // Kuş Eğimi
-                if (bird.velocity < 0) bird.rotation = -0.3;
-                else if (bird.velocity > 3) { bird.rotation += 0.05; if (bird.rotation > 1.2) bird.rotation = 1.2; }
+                if (gameMode === "FLAPPY") {
+                    // FLAPPY GÜNCELLEMELERİ
+                    if (bird.velocity < 0) bird.rotation = -0.3;
+                    else if (bird.velocity > 3) { bird.rotation += 0.05; if (bird.rotation > 1.2) bird.rotation = 1.2; }
 
-                if (frameCount % 5 === 0) bird.wingFrame = (bird.wingFrame + 1) % 3;
+                    if (frameCount % 5 === 0) bird.wingFrame = (bird.wingFrame + 1) % 3;
+                    if (frameCount % 90 === 0) createPipe();
 
-                // Boru Üretimi
-                if (frameCount % 90 === 0) createPipe();
+                    monster.y += (bird.y - 30 - monster.y) * 0.05;
+                    if(monster.shake > 0) monster.shake--;
 
-                // Canavar Takip Hareketi (Kuşun yüksekliğine göre süzülür)
-                monster.y += (bird.y - 30 - monster.y) * 0.05;
-                if(monster.shake > 0) monster.shake--;
-
-                pipes.forEach((pipe, idx) => {
-                    pipe.x -= pipeSpeed;
-
-                    // Boru Çarpışması
-                    if (bird.x + bird.w - 4 > pipe.x && bird.x + 4 < pipe.x + pipeWidth) {
-                        if (bird.y + 4 < pipe.topHeight || bird.y + bird.h - 4 > pipe.bottomY) gameOver = true;
-                    }
-
-                    // Puan Kazanma ve Canavara Hasar Verme Verisi
-                    if (!pipe.passed && pipe.x + pipeWidth < bird.x) {
-                        pipe.passed = true;
-                        score++;
-                        scoreText.textContent = score;
-                        
-                        // HER 10 PUANDA CANAVARA HASAR VER
-                        if (score % 10 === 0 && monster.hp > 0) {
-                            monster.hp--;
-                            monster.shake = 20; // Canavar sallanma efekti
-                            flashEffect = 10; // Ekranda şimşek çakması
-                            bossHpBar.style.width = (monster.hp / monster.maxHp) * 100 + "%";
+                    pipes.forEach((pipe, idx) => {
+                        pipe.x -= pipeSpeed;
+                        if (bird.x + bird.w - 4 > pipe.x && bird.x + 4 < pipe.x + pipeWidth) {
+                            if (bird.y + 4 < pipe.topHeight || bird.y + bird.h - 4 > pipe.bottomY) gameOver = true;
                         }
+
+                        if (!pipe.passed && pipe.x + pipeWidth < bird.x) {
+                            pipe.passed = true;
+                            score++;
+                            scoreText.textContent = score;
+                            
+                            // HER 3 PUANDA BOSS HASAR ALIR
+                            if (score % 3 === 0 && monster.hp > 0) {
+                                monster.hp--;
+                                monster.shake = 20;
+                                flashEffect = 12;
+                                bossHpBar.style.width = (monster.hp / monster.maxHp) * 100 + "%";
+
+                                // BOSS ÖLDÜYSE GEOMETRY DASH MODUNA GEÇ!
+                                if (monster.hp <= 0) {
+                                    setTimeout(() => {
+                                        gameMode = "DASH";
+                                        modeText.textContent = "GEOMETRY DASH MODU";
+                                        modeText.style.color = "#00ffcc";
+                                        bossUi.style.display = "none";
+                                        pipes = []; // Boruları temizle
+                                        bird.y = canvas.height - groundHeight - bird.dashSize;
+                                        bird.velocity = 0;
+                                    }, 200);
+                                }
+                            }
+                        }
+                        if (pipe.x + pipeWidth < 0) pipes.splice(idx, 1);
+                    });
+
+                    if (bird.y + bird.h >= canvas.height - groundHeight || bird.y < 0) gameOver = true;
+
+                } else if (gameMode === "DASH") {
+                    // GEOMETRY DASH GÜNCELLEMELERİ
+                    // Küp yere basıyor mu kontrolü
+                    if (bird.y >= canvas.height - groundHeight - bird.dashSize) {
+                        bird.y = canvas.height - groundHeight - bird.dashSize;
+                        bird.velocity = 0;
+                        // Yerde giderken küpün dönme açısını sıfırla/düzelt
+                        bird.rotation = 0;
+                    } else {
+                        // Havada dönme efekti
+                        bird.rotation += 0.08;
                     }
 
-                    if (pipe.x + pipeWidth < 0) pipes.splice(idx, 1);
-                });
+                    // Çivi Engeli Üretimi
+                    if (frameCount % 80 === 0) createSpike();
 
-                // Zemin Çarpışması
-                if (bird.y + bird.h >= canvas.height - groundHeight) {
-                    bird.y = canvas.height - groundHeight - bird.h;
-                    gameOver = true;
+                    spikes.forEach((spike, idx) => {
+                        spike.x -= spikeSpeed;
+
+                        // Çivi Çarpışma Testi (Küp Hitbox)
+                        if (bird.x + bird.dashSize > spike.x + 4 && bird.x < spike.x + spike.w - 4 &&
+                            bird.y + bird.dashSize > canvas.height - groundHeight - spike.h) {
+                            gameOver = true;
+                        }
+
+                        if (!spike.passed && spike.x + spike.w < bird.x) {
+                            spike.passed = true;
+                            score++;
+                            scoreText.textContent = score;
+                        }
+                        if (spike.x + spike.w < 0) spikes.splice(idx, 1);
+                    });
                 }
             }
 
@@ -151,103 +201,91 @@
             requestAnimationFrame(update);
         }
 
-        function drawMonster() {
-            if (monster.hp <= 0) return; // Canı bittiyse görünmez olur (Yenildi)
-
-            ctx.save();
-            // Hasar alınca titreme efekti ekle
-            let shakeX = monster.shake > 0 ? (Math.random() - 0.5) * 10 : 0;
-            ctx.translate(monster.x + shakeX, monster.y);
-
-            // Karanlık Canavar Gövdesi (Büyük Gölgeli Piksel Kütlesi)
-            ctx.fillStyle = monster.shake > 0 ? "#ff4757" : "#1e1e24"; // Hasar alınca kırmızı yanar
-            ctx.fillRect(0, 0, monster.w, monster.h);
-            ctx.strokeStyle = "#000"; ctx.lineWidth = 3;
-            ctx.strokeRect(0, 0, monster.w, monster.h);
-
-            // Parlayan Kırmızı Gözler
-            ctx.fillStyle = "#ff0000";
-            ctx.fillRect(monster.w - 25, 20, 8, 8);
-            ctx.fillRect(monster.w - 10, 20, 8, 8);
-
-            // Keskin Dişler ve Ağız
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(monster.w - 25, 45, 20, 4); // Üst diş hattı
-            ctx.fillRect(monster.w - 25, 53, 20, 4); // Alt diş hattı
-
-            // Canavarın Pençeleri (Öne doğru uzanan)
-            ctx.fillStyle = "#2d2d35";
-            ctx.fillRect(monster.w - 5, 60, 15, 10);
-            ctx.strokeRect(monster.w - 5, 60, 15, 10);
-
-            ctx.restore();
-        }
-
-        function drawBird(x, y) {
-            ctx.save();
-            ctx.translate(x + bird.w / 2, y + bird.h / 2);
-            ctx.rotate(bird.rotation);
-
-            ctx.fillStyle = "#F7D51D"; ctx.fillRect(-bird.w/2, -bird.h/2, bird.w, bird.h);
-            ctx.lineWidth = 2; ctx.strokeStyle = "#000"; ctx.strokeRect(-bird.w/2, -bird.h/2, bird.w, bird.h);
-
-            // Göz
-            ctx.fillStyle = "#FFF"; ctx.fillRect(4, -8, 10, 10);
-            ctx.fillStyle = "#000"; ctx.fillRect(10, -6, 4, 4);
-
-            // Gaga
-            ctx.fillStyle = "#F75300"; ctx.fillRect(8, 2, 10, 8); ctx.strokeRect(8, 2, 10, 8);
-
-            // Kanat Animasyonu
-            ctx.fillStyle = "#FFF";
-            if (bird.wingFrame === 0) ctx.fillRect(-14, -12, 12, 10);
-            else if (bird.wingFrame === 1) ctx.fillRect(-14, -4, 12, 8);
-            else ctx.fillRect(-14, 2, 12, 10);
-
-            ctx.restore();
-        }
-
         function draw() {
-            // Arka Plan (Cehennem/Karanlık Atmosfer)
-            ctx.fillStyle = "#2c3e50";
+            // Arka Plan Rengi Modlara Göre Değişir
+            ctx.fillStyle = (gameMode === "DASH") ? "#181a26" : "#2c3e50";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Boruları Çiz
-            pipes.forEach(pipe => {
-                ctx.fillStyle = "#27ae60"; ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
-                ctx.fillRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
-                ctx.fillStyle = "#2ecc71";
-                ctx.fillRect(pipe.x - 4, pipe.topHeight - 20, pipeWidth + 8, 20);
-                ctx.fillRect(pipe.x - 4, pipe.bottomY, pipeWidth + 8, 20);
-            });
+            if (gameMode === "FLAPPY") {
+                // FLAPPY BORULARINI ÇİZ
+                pipes.forEach(pipe => {
+                    ctx.fillStyle = "#27ae60"; ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+                    ctx.fillRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
+                });
 
-            // Zemini Çiz
-            ctx.fillStyle = "#7f8c8d"; ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
-            ctx.fillStyle = "#95a5a6"; ctx.fillRect(0, canvas.height - groundHeight, canvas.width, 10);
+                // Canavarı Çiz
+                if (monster.hp > 0) {
+                    ctx.save();
+                    if (monster.shake > 0) ctx.translate((Math.random() - 0.5) * 10, 0);
+                    ctx.fillStyle = monster.shake > 0 ? "#ff4757" : "#1e1e24";
+                    ctx.fillRect(monster.x, monster.y, monster.w, monster.h);
+                    ctx.fillStyle = "#ff0000"; ctx.fillRect(monster.x + monster.w - 20, monster.y + 20, 8, 8); // Göz
+                    ctx.restore();
+                }
 
-            // DÜŞMANI VE KUŞU ÇİZ
-            drawMonster();
-            drawBird(bird.x, bird.y);
+                // Kuşu Çiz
+                ctx.save();
+                ctx.translate(bird.x + bird.w/2, bird.y + bird.h/2);
+                ctx.rotate(bird.rotation);
+                ctx.fillStyle = "#F7D51D"; ctx.fillRect(-bird.w/2, -bird.h/2, bird.w, bird.h);
+                ctx.fillStyle = "#FFF"; ctx.fillRect(4, -8, 8, 8); // Göz
+                ctx.fillStyle = "#F75300"; ctx.fillRect(6, 2, 8, 6); // Gaga
+                ctx.restore();
 
-            // Şimşek Hasar Efekti (Ekran beyaz parlar)
+            } else if (gameMode === "DASH") {
+                // GEOMETRY DASH ENGELİ (ÜÇGEN ÇİVİLER) ÇİZİMİ
+                spikes.forEach(spike => {
+                    ctx.fillStyle = "#ff4757";
+                    ctx.beginPath();
+                    ctx.moveTo(spike.x, canvas.height - groundHeight);
+                    ctx.lineTo(spike.x + spike.w / 2, canvas.height - groundHeight - spike.h);
+                    ctx.lineTo(spike.x + spike.w, canvas.height - groundHeight);
+                    ctx.closePath();
+                    ctx.fill();
+                    // Çivi Konturu
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
+                });
+
+                // GEOMETRY DASH KÜPÜ ÇİZİMİ (Yeşil Parlayan Kare)
+                ctx.save();
+                ctx.translate(bird.x + bird.dashSize/2, bird.y + bird.dashSize/2);
+                ctx.rotate(bird.rotation);
+                ctx.fillStyle = "#00ffcc"; // Parlak Cyan Küp
+                ctx.fillRect(-bird.dashSize/2, -bird.dashSize/2, bird.dashSize, bird.dashSize);
+                ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
+                ctx.strokeRect(-bird.dashSize/2, -bird.dashSize/2, bird.dashSize, bird.dashSize);
+                // İç yüz ifadesi (Geometry Dash ikonu detayı)
+                ctx.fillStyle = "#181a26";
+                ctx.fillRect(-10, -10, 6, 8); ctx.fillRect(4, -10, 6, 8); // Gözler
+                ctx.fillRect(-10, 4, 20, 4); // Ağız
+                ctx.restore();
+            }
+
+            // Ortak Zemin Çizimi
+            ctx.fillStyle = (gameMode === "DASH") ? "#0f1018" : "#7f8c8d";
+            ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+            ctx.fillStyle = (gameMode === "DASH") ? "#00ffcc" : "#95a5a6"; 
+            ctx.fillRect(0, canvas.height - groundHeight, canvas.width, 8); // Üst şerit çizgisi
+
+            // Şimşek Hasar Efekti
             if (flashEffect > 0) {
-                ctx.fillStyle = `rgba(255, 255, 255, ${flashEffect / 10})`;
+                ctx.fillStyle = `rgba(255, 255, 255, ${flashEffect / 12})`;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 flashEffect--;
             }
 
-            // Ekran Yazıları
+            // Durum Ekranları
             if (!gameStarted) {
-                ctx.fillStyle = "white"; ctx.font = "18px Arial"; ctx.textAlign = "center";
-                ctx.fillText("BAŞLAMAK VE ZIPLAMAK İÇİN DOKUN", canvas.width / 2, canvas.height / 2 + 100);
+                ctx.fillStyle = "white"; ctx.font = "20px Arial"; ctx.textAlign = "center";
+                ctx.fillText("BAŞLAMAK İÇİN DOKUN", canvas.width / 2, canvas.height / 2 + 100);
             }
 
             if (gameOver) {
-                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = "#e74c3c"; ctx.font = "35px sans-serif"; ctx.textAlign = "center";
                 ctx.fillText("YENİLDİN!", canvas.width / 2, canvas.height / 2 - 20);
                 ctx.fillStyle = "white"; ctx.font = "18px sans-serif";
-                ctx.fillText("Tekrar oynamak için dokun", canvas.width / 2, canvas.height / 2 + 30);
+                ctx.fillText("Yeniden Başlamak İçin Dokun", canvas.width / 2, canvas.height / 2 + 30);
             }
         }
 
